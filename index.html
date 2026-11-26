@@ -8,8 +8,8 @@
 <meta name="mobile-web-app-capable" content="yes">
 <meta name="apple-mobile-web-app-title" content="가계부">
 <meta name="apple-mobile-web-app-status-bar-style" content="default">
-<link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'%3E%3Crect width='100' height='100' rx='22' fill='%23d9607e'/%3E%3Ctext x='50' y='68' font-size='56' text-anchor='middle' fill='white'%3E₩%3C/text%3E%3C/svg%3E">
-<link rel="apple-touch-icon" href="icon.png">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon.png">
 <title>가계부</title>
 <style>
 :root{
@@ -263,7 +263,7 @@ function txForm(t){
   t = t || { type:'out', date:view.sel, cat:'', amount:'', memo:'' };
   open(`<h3>${edit?'내역 수정':'내역 추가'}</h3>
     <div class="seg" id="typeSeg"><button data-t="out" class="${t.type==='out'?'on':''}">지출</button><button data-t="in" class="${t.type==='in'?'on':''}">수입</button></div>
-    <label>금액</label><input class="f" id="fAmt" type="number" inputmode="numeric" placeholder="0" value="${t.amount}">
+    <label>금액</label><input class="f money" id="fAmt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="${t.amount!==''?won(t.amount):''}">
     <label>날짜</label><input class="f" id="fDate" type="date" value="${t.date}">
     <label>항목</label><div class="cats" id="fCats"></div>
     <label>메모</label><input class="f" id="fMemo" placeholder="예: 마트 장보기" value="${esc(t.memo)}">
@@ -286,11 +286,11 @@ function txForm(t){
     const b = e.target.closest('button'); if(!b) return;
     if (b.dataset.t){ type = b.dataset.t; sheet.querySelectorAll('#typeSeg button').forEach(x=>x.classList.toggle('on',x===b)); cat=''; drawCats(); }
     else if (b.dataset.c !== undefined){ cat = b.dataset.c; drawCats(); }
-    else if (b.dataset.f !== undefined){ const f = db.freq[+b.dataset.f]; document.getElementById('fAmt').value = f.amount; document.getElementById('fMemo').value = f.memo; cat = f.cat; drawCats(); }
+    else if (b.dataset.f !== undefined){ const f = db.freq[+b.dataset.f]; document.getElementById('fAmt').value = won(f.amount); document.getElementById('fMemo').value = f.memo; cat = f.cat; drawCats(); }
     else if (b.id==='fCancel') closeModal();
     else if (b.id==='fDel'){ if(confirm('삭제할까요?')){ db.tx = db.tx.filter(x=>x.id!==t.id); save(); closeModal(); render(); } }
     else if (b.id==='fSave'){
-      const amount = Math.round(+document.getElementById('fAmt').value);
+      const amount = Math.round(+document.getElementById('fAmt').value.replace(/,/g,''));
       const date = document.getElementById('fDate').value;
       const memo = document.getElementById('fMemo').value.trim();
       if (!(amount>0)) return alert('금액을 입력해 주세요.');
@@ -316,7 +316,7 @@ function fixedForm(f){
   f = f || { name:'', amount:'', day:1, cat:db.catOut[0] };
   open(`<h3>${edit?'고정비 수정':'고정비 추가'}</h3>
     <label>이름</label><input class="f" id="xName" placeholder="예: 월세, 통신비" value="${esc(f.name)}">
-    <label>금액</label><input class="f" id="xAmt" type="number" inputmode="numeric" value="${f.amount}">
+    <label>금액</label><input class="f money" id="xAmt" type="text" inputmode="numeric" autocomplete="off" placeholder="0" value="${f.amount!==''?won(f.amount):''}">
     <label>매월 결제일</label><input class="f" id="xDay" type="number" min="1" max="31" value="${f.day}">
     <label>항목</label><select class="f" id="xCat">${db.catOut.map(c=>`<option ${c===f.cat?'selected':''}>${esc(c)}</option>`).join('')}</select>
     <button class="btn" id="xSave">저장</button>
@@ -328,7 +328,7 @@ function fixedForm(f){
     else if (id==='xDel'){ if(confirm('고정비를 삭제할까요? (이미 기록된 지출은 남아요)')){ db.fixed = db.fixed.filter(x=>x.id!==f.id); save(); closeModal(); render(); } }
     else if (id==='xSave'){
       const name = document.getElementById('xName').value.trim();
-      const amount = Math.round(+document.getElementById('xAmt').value);
+      const amount = Math.round(+document.getElementById('xAmt').value.replace(/,/g,''));
       const day = Math.min(31, Math.max(1, Math.round(+document.getElementById('xDay').value) || 1));
       const cat = document.getElementById('xCat').value;
       if (!name || !(amount>0)) return alert('이름과 금액을 입력해 주세요.');
@@ -376,6 +376,16 @@ function exportCsv(){
 }
 
 /* ---------- events ---------- */
+modal.addEventListener('input', e => {
+  const el = e.target; if (!el.classList.contains('money')) return;
+  const pos = el.selectionStart;
+  const digitsBefore = el.value.slice(0,pos).replace(/\D/g,'').length;
+  const digits = el.value.replace(/\D/g,'').replace(/^0+(?=\d)/,'');
+  el.value = digits ? Number(digits).toLocaleString('ko-KR') : '';
+  let p = 0, c = 0;
+  while (p < el.value.length && c < digitsBefore){ if (/\d/.test(el.value[p])) c++; p++; }
+  el.setSelectionRange(p,p);
+});
 document.getElementById('fab').addEventListener('click', () => txForm());
 document.getElementById('tabs').addEventListener('click', e => {
   const b = e.target.closest('button'); if(!b) return;
