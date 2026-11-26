@@ -440,6 +440,25 @@ document.getElementById('app').addEventListener('change', e => {
   r.readAsText(file);
 });
 
+/* swipe to switch tabs */
+(() => {
+  const order = ['home','list','fixed','stats'];
+  let sx=0, sy=0, st=0, ok=false;
+  document.addEventListener('touchstart', e => {
+    ok = e.touches.length===1 && !modal.firstChild && !e.target.closest('input,select,textarea');
+    if (!ok) return;
+    sx = e.touches[0].clientX; sy = e.touches[0].clientY; st = Date.now();
+  }, {passive:true});
+  document.addEventListener('touchend', e => {
+    if (!ok) return; ok = false;
+    const t = e.changedTouches[0], dx = t.clientX - sx, dy = t.clientY - sy;
+    if (Math.abs(dx) < 70 || Math.abs(dx) < Math.abs(dy)*1.8 || Date.now()-st > 600) return;
+    const i = order.indexOf(view.tab) + (dx<0 ? 1 : -1);
+    if (i < 0 || i >= order.length) return;
+    view.tab = order[i]; q=''; render(); window.scrollTo(0,0);
+  }, {passive:true});
+})();
+
 render();
 })();
 </script>
